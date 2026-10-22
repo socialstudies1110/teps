@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>반응형 단어 시험 웹앱 - Voca Quiz Master</title>
+  
+  <!-- 1. Pretendard 웹폰트 CDN -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  
+  <!-- 2. FontAwesome 아이콘 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- 3. Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Pretendard', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#fefce8', 100: '#fef9c3', 200: '#fef08a', 300: '#fde047',
+              400: '#facc15', 500: '#eab308', 600: '#ca8a04', 900: '#713f12',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body { font-family: 'Pretendard', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #fde047; border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen antialiased selection:bg-brand-300">
+
+  <div class="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+    
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-400 text-slate-900 shadow-md shadow-brand-200 mb-4 transform hover:rotate-6 transition-transform cursor-pointer" onclick="showScreen('setup')">
+        <i class="fa-solid fa-book-bookmark text-2xl"></i>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+        스마트 단어장 테스트
+      </h1>
+      <p class="text-slate-500 mt-2 text-sm sm:text-base">
+        원어민 문법 검증 예문 & AI 심층 뉘앙스 해설 웹앱
+      </p>
+    </header>
+
+    <!-- ================= 1. 메인 시험 설정 화면 ================= -->
+    <main id="setup-screen" class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-10 space-y-8">
+      
+      <!-- 저장된 오답 배너 -->
+      <div id="saved-wrong-banner" class="hidden bg-amber-50 border-2 border-brand-300 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3 text-amber-900">
+          <i class="fa-solid fa-triangle-exclamation text-brand-600 text-xl"></i>
+          <div>
+            <p class="font-bold text-sm">이전에 저장된 오답 노드가 있습니다!</p>
+            <p id="saved-wrong-count-text" class="text-xs text-amber-700">총 0개의 틀린 단어가 저장되어 있습니다.</p>
+          </div>
+        </div>
+        <button type="button" id="btn-start-saved-wrong" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-brand-400 hover:bg-brand-500 text-slate-900 font-bold text-xs shadow-md transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate-right"></i> 저장된 오답 재시험
+        </button>
+      </div>
+
+      <!-- 1. 일차(Day) 선택 섹션 -->
+      <section>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-brand-100 text-brand-900 font-bold text-sm">1</span>
+            <h2 class="text-lg font-bold text-slate-800">학습 일차 (Day) 선택</h2>
+            <span id="selected-count" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+              1개 선택됨
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-semibold">
+            <button type="button" id="btn-select-all" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition">
+              <i class="fa-solid fa-check-double mr-1"></i>전체 선택
+            </button>
+            <button type="button" id="btn-deselect-all" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition">
+              <i class="fa-solid fa-xmark mr-1"></i>전체 해제
+            </button>
+          </div>
+        </div>
+
+        <div id="day-grid" class="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-9 gap-2.5"></div>
+      </section>
+
+      <hr class="border-slate-100" />
+
+      <!-- 2. 시험 유형 선택 섹션 -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-brand-100 text-brand-900 font-bold text-sm">2</span>
+            <h2 class="text-lg font-bold text-slate-800">시험 유형 선택</h2>
+          </div>
+          <span class="text-xs font-semibold text-slate-400">* 무작위 복수 선택 가능</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label class="test-type-card relative flex flex-col p-4 cursor-pointer rounded-2xl border-2 border-slate-200 hover:border-brand-300 transition-all bg-white">
+            <input type="checkbox" name="testType" value="kor_to_eng" class="sr-only" />
+            <div class="flex items-center justify-between mb-2">
+              <i class="fa-solid fa-language text-brand-500 text-xl"></i>
+              <div class="checkbox-indicator w-5 h-5 rounded-md border-2 border-slate-300 flex items-center justify-center transition">
+                <i class="fa-solid fa-check text-xs text-slate-900 hidden check-icon"></i>
+              </div>
+            </div>
+            <span class="font-bold text-slate-800">한글 → 영어</span>
+            <span class="text-xs text-slate-400 mt-1">한글 뜻을 보고 영단어 맞히기</span>
+          </label>
+
+          <label class="test-type-card relative flex flex-col p-4 cursor-pointer rounded-2xl border-2 border-slate-200 hover:border-brand-300 transition-all bg-white">
+            <input type="checkbox" name="testType" value="eng_to_kor" class="sr-only" checked />
+            <div class="flex items-center justify-between mb-2">
+              <i class="fa-solid fa-font text-brand-500 text-xl"></i>
+              <div class="checkbox-indicator w-5 h-5 rounded-md border-2 border-slate-300 flex items-center justify-center transition">
+                <i class="fa-solid fa-check text-xs text-slate-900 hidden check-icon"></i>
+              </div>
+            </div>
+            <span class="font-bold text-slate-800">영어 → 한글</span>
+            <span class="text-xs text-slate-400 mt-1">영어 단어를 보고 한글 뜻 맞히기</span>
+          </label>
+
+          <label class="test-type-card relative flex flex-col p-4 cursor-pointer rounded-2xl border-2 border-slate-200 hover:border-brand-300 transition-all bg-white">
+            <input type="checkbox" name="testType" value="sentence_blank" class="sr-only" checked />
+            <div class="flex items-center justify-between mb-2">
+              <i class="fa-solid fa-file-pen text-brand-500 text-xl"></i>
+              <div class="checkbox-indicator w-5 h-5 rounded-md border-2 border-slate-300 flex items-center justify-center transition">
+                <i class="fa-solid fa-check text-xs text-slate-900 hidden check-icon"></i>
+              </div>
+            </div>
+            <span class="font-bold text-slate-800">문장 빈칸 채우기</span>
+            <span class="text-xs text-slate-400 mt-1">원어민 검증 자연스러운 예문</span>
+          </label>
+        </div>
+      </section>
+
+      <hr class="border-slate-100" />
+
+      <!-- 3. 답안 입력 방식 선택 섹션 (복수 선택으로 변경) -->
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-brand-100 text-brand-900 font-bold text-sm">3</span>
+            <h2 class="text-lg font-bold text-slate-800">답안 입력 방식</h2>
+          </div>
+          <span class="text-xs font-semibold text-slate-400">* 무작위 복수 선택 가능</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label class="answer-mode-card relative flex items-center justify-between p-4 cursor-pointer rounded-2xl border-2 border-slate-200 hover:border-brand-300 transition-all bg-white">
+            <input type="checkbox" name="answerMode" value="multiple_choice" class="sr-only" checked />
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 font-bold">4</div>
+              <div>
+                <p class="font-bold text-slate-800">객관식 (4지선다)</p>
+                <p class="text-xs text-slate-400">4개 보기 중 선택</p>
+              </div>
+            </div>
+            <div class="checkbox-indicator w-5 h-5 rounded-md border-2 border-slate-300 flex items-center justify-center transition">
+              <i class="fa-solid fa-check text-xs text-slate-900 hidden check-icon"></i>
+            </div>
+          </label>
+
+          <label class="answer-mode-card relative flex items-center justify-between p-4 cursor-pointer rounded-2xl border-2 border-slate-200 hover:border-brand-300 transition-all bg-white">
+            <input type="checkbox" name="answerMode" value="short_answer" class="sr-only" checked />
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 text-lg">
+                <i class="fa-solid fa-keyboard"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800">주관식 (타자 입력)</p>
+                <p class="text-xs text-slate-400">키보드로 직접 입력</p>
+              </div>
+            </div>
+            <div class="checkbox-indicator w-5 h-5 rounded-md border-2 border-slate-300 flex items-center justify-center transition">
+              <i class="fa-solid fa-check text-xs text-slate-900 hidden check-icon"></i>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <!-- 시작 버튼 -->
+      <div class="pt-4">
+        <button type="button" id="btn-start-test" class="w-full py-4 sm:py-5 px-6 rounded-2xl bg-brand-400 hover:bg-brand-500 text-slate-900 font-extrabold text-lg sm:text-xl shadow-lg shadow-brand-200/80 hover:shadow-xl hover:shadow-brand-300/80 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 group">
+          <span>시험 시작하기</span>
+          <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+        </button>
+      </div>
+    </main>
+
+    <!-- ================= 2. 시험 진행 화면 ================= -->
+    <div id="quiz-screen" class="hidden max-w-2xl mx-auto space-y-6">
+      
+      <div>
+        <div class="flex items-center justify-between text-sm font-bold text-slate-600 mb-2">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-fire text-brand-500"></i>
+            <span id="quiz-mode-title">시험 진행 중</span>
+          </span>
+          <span id="quiz-progress-text" class="bg-brand-100 text-brand-900 px-3 py-1 rounded-full text-xs font-black">
+            1 / 10
+          </span>
+        </div>
+        
+        <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+          <div id="quiz-progress-bar" class="h-full bg-brand-400 transition-all duration-300 ease-out" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Question Card -->
+      <div id="question-card" class="bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-100 p-6 sm:p-10 transition-all transform">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span id="question-sub-hint" class="text-xs font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">
+              Day 1
+            </span>
+            <span id="question-pos-badge" class="text-xs font-black tracking-wider px-2.5 py-1 rounded-md bg-amber-100 text-amber-900">
+              [품사: n.]
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span id="question-mode-badge" class="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+              주관식
+            </span>
+            <span id="question-type-badge" class="text-xs font-semibold text-brand-600">
+              [한글 → 영어]
+            </span>
+          </div>
+        </div>
+
+        <div class="mb-8">
+          <h3 id="question-prompt" class="text-2xl sm:text-3xl font-extrabold text-slate-800 leading-relaxed text-center py-4 min-h-[90px] flex items-center justify-center">
+            질문 텍스트
+          </h3>
+        </div>
+
+        <div id="answer-container" class="space-y-3 mb-8"></div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+          <button type="button" id="btn-quit-quiz" class="text-xs font-bold text-slate-400 hover:text-rose-500 transition px-2 py-1">
+            <i class="fa-solid fa-arrow-left mr-1"></i> 중단하기
+          </button>
+
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-prev-question" disabled class="py-3 px-4 sm:px-5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+              <i class="fa-solid fa-chevron-left text-xs"></i>
+              <span>이전 문제</span>
+            </button>
+
+            <button type="button" id="btn-next-question" disabled class="py-3 px-5 sm:px-6 rounded-xl bg-brand-400 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-bold text-sm shadow-md transition flex items-center gap-2">
+              <span>다음 문제</span>
+              <i class="fa-solid fa-chevron-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 3. 결과 및 오답 노트 화면 ================= -->
+    <div id="result-screen" class="hidden space-y-8">
+      
+      <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-10 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-100 text-brand-600 text-2xl mb-4">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">시험 결과 리포트</h2>
+
+        <div class="grid grid-cols-3 gap-3 my-6 sm:my-8">
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <p class="text-xs font-bold text-slate-400 mb-1">최종 점수</p>
+            <p id="result-score" class="text-2xl sm:text-3xl font-black text-brand-600">80점</p>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <p class="text-xs font-bold text-slate-400 mb-1">정답 / 오답</p>
+            <p id="result-counts" class="text-base sm:text-xl font-bold text-slate-800">
+              <span class="text-emerald-600">8</span> / <span class="text-rose-500">2</span>
+            </p>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <p class="text-xs font-bold text-slate-400 mb-1">소요 시간</p>
+            <p id="result-time" class="text-base sm:text-xl font-bold text-slate-800">01:24</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <button type="button" id="btn-retest-wrong" class="py-3.5 px-6 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm shadow-md shadow-rose-200 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>오답만 무작위로 다시 시험 보기 (<span id="wrong-count-badge">0</span>개)</span>
+          </button>
+          
+          <button type="button" onclick="showScreen('setup')" class="py-3.5 px-6 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-house"></i>
+            <span>메인 설정으로 돌아가기</span>
+          </button>
+        </div>
+      </div>
+
+      <section class="space-y-4">
+        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-clipboard-check text-brand-500"></i>
+          <span>전체 문제 검토 및 뉘앙스 심층 분석</span>
+        </h3>
+        <div id="review-list" class="space-y-4"></div>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center mt-12 text-xs text-slate-400">
+      &copy; 2026 Interactive Voca Quiz Engine. All rights reserved.
+    </footer>
+  </div>
+
+  <script>
+    // ================= [1. 원어민 검증 고품질 예문 데이터베이스] =================
+    const VOCA_DATABASE = [
+      { 
+        id: 1, day: 1, english: "public", korean: "a. 대중의, n. 대중", 
+        sentences: [
+          { text: "The museum is open to the {blank}.", translation: "박물관은 일반 대중에게 개방되어 있습니다.", note: "'be open to the public': 대중에게 개방되다" },
+          { text: "Protecting human health is in the {blank} interest.", translation: "인간의 건강을 보호하는 것은 공공의 이익에 부합합니다.", note: "'public interest': 공익 / 공공의 이익" }
+        ]
+      },
+      { 
+        id: 2, day: 1, english: "likely", korean: "a. ...할 것 같은", 
+        sentences: [
+          { text: "It is highly {blank} that rain will fall this evening.", translation: "오늘 저녁에 비가 올 가능성이 매우 높습니다.", note: "'be likely that S+V': ~할 가능성이 높다" },
+          { text: "The candidate is {blank} to win the election.", translation: "그 후보가 선거에서 승리할 것으로 보입니다.", note: "'be likely to V': ~할 것 같다" }
+        ]
+      },
+      { 
+        id: 3, day: 1, english: "unlikely", korean: "a. ...할 것 같지 않은", 
+        sentences: [
+          { text: "It is {blank} that the price will drop soon.", translation: "가격이 곧 떨어질 것 같지는 않습니다.", note: "'unlikely': 가능성이 낮은 / ...할 것 같지 않은" }
+        ]
+      },
+      { 
+        id: 4, day: 1, english: "available", korean: "a. 이용할 수 있는", 
+        sentences: [
+          { text: "Free Wi-Fi service is {blank} in the lobby.", translation: "로비에서 무료 와이파이 서비스를 이용할 수 있습니다.", note: "'available': 이용할 수 있는, 구득 가능한" }
+        ]
+      },
+      { 
+        id: 5, day: 1, english: "species", korean: "n. 종", 
+        sentences: [
+          { text: "Many endangered {blank} are protected in this national park.", translation: "이 국립공원에서는 많은 멸종 위기 종들이 보호받고 있습니다.", note: "'endangered species': 멸종 위기 종" },
+          { text: "Scientists discovered a rare {blank} of plant in the forest.", translation: "과학자들은 숲에서 희귀한 식물 종을 발견했습니다.", note: "species는 단수/복수 형태가 동일합니다." }
+        ]
+      },
+      { 
+        id: 6, day: 1, english: "based", korean: "a. (~에) 기반을 둔", 
+        sentences: [
+          { text: "The movie is {blank} on a true historical event.", translation: "그 영화는 실제 역사적 사건에 기반을 두고 있습니다.", note: "'be based on': ~에 기반을 두다 / 근거하다" }
+        ]
+      },
+      { 
+        id: 7, day: 1, english: "offer", korean: "v. 제안하다", 
+        sentences: [
+          { text: "The company decided to {blank} a 20% discount to new customers.", translation: "그 회사는 신규 고객에게 20% 할인을 제안하기로 결정했습니다.", note: "'offer a discount': 할인을 제안/제공하다" },
+          { text: "He kindly agreed to {blank} some advice on my career.", translation: "그는 내 커리어에 대해 조언을 해주겠다고 친절히 응했습니다.", note: "기회나 조언을 내놓다/제안하다" }
+        ]
+      },
+      { 
+        id: 8, day: 1, english: "form", korean: "n. 형태, v. 형성시키다", 
+        sentences: [
+          { text: "Please fill out this registration {blank} completely.", translation: "이 등록 양식을 빠짐없이 작성해 주세요.", note: "'application/registration form': 신청서 / 양식" },
+          { text: "Water droplets begin to {blank} on the outside of the cold glass.", translation: "차가운 유리잔 겉면에 물방울이 형성되기 시작합니다.", note: "구조나 형태가 이루어져 '형성되다'" }
+        ]
+      },
+      { 
+        id: 9, day: 1, english: "major", korean: "a. 주요한", 
+        sentences: [
+          { text: "Tourism plays a {blank} role in the local economy.", translation: "관광업은 지역 경제에서 주요한 역할을 합니다.", note: "'play a major role': 주요한 역할을 하다" }
+        ]
+      },
+      { 
+        id: 10, day: 1, english: "majority", korean: "n. 다수", 
+        sentences: [
+          { text: "The vast {blank} of citizens supported the new policy.", translation: "대다수의 시민들이 새 정책을 지지했습니다.", note: "'the majority of ~': 대다수의 ~" }
+        ]
+      },
+      { 
+        id: 11, day: 1, english: "common", korean: "a. 일반적인, 공통의", 
+        sentences: [
+          { text: "Colds are extremely {blank} during the winter season.", translation: "겨울철에는 감기가 매우 흔합니다.", note: "일반적이고 흔한 상태" }
+        ]
+      },
+      { 
+        id: 12, day: 1, english: "provide", korean: "v. 제공하다", 
+        sentences: [
+          { text: "The hotel will {blank} free breakfast for all guests.", translation: "호텔은 모든 투숙객에게 무료 조식을 제공합니다.", note: "'provide A for B': B에게 A를 제공하다" }
+        ]
+      },
+      { 
+        id: 13, day: 1, english: "novel", korean: "a. 새로운, n. 소설", 
+        sentences: [
+          { text: "She spent three years writing her first historical {blank}.", translation: "그녀는 첫 역사 소설을 쓰느라 3년을 보냈습니다.", note: "write의 목적어로 쓰인 명사 '소설'" }
+        ]
+      },
+      { 
+        id: 14, day: 2, english: "means", korean: "n. 수단, 방법", 
+        sentences: [
+          { text: "Bicycles are an eco-friendly {blank} of transportation.", translation: "자전거는 친환경적인 교통 수단입니다.", note: "'means of transportation': 교통 수단" }
+        ]
+      },
+      { 
+        id: 15, day: 2, english: "effective", korean: "a. 효과적인", 
+        sentences: [
+          { text: "Daily exercise is an {blank} way to reduce stress.", translation: "매일 하는 운동은 스트레스를 줄이는 효과적인 방법입니다.", note: "효과가 있는 상태" }
+        ]
+      },
+      { 
+        id: 16, day: 2, english: "benefits", korean: "n. 이익", 
+        sentences: [
+          { text: "Drinking enough water has numerous health {blank}.", translation: "충분한 물을 마시는 것은 수많은 건강상 이점이 있습니다.", note: "혜택 및 이익" }
+        ]
+      },
+      { 
+        id: 17, day: 2, english: "growth", korean: "n. 성장", 
+        sentences: [
+          { text: "The tech industry experienced rapid economic {blank} last year.", translation: "기술 산업은 지난해 급격한 경제 성장을 경험했습니다.", note: "경제/규모의 성장" }
+        ]
+      }
+    ];
+
+    // ================= [2. 단어 심층 뉘앙스 분석 맵] =================
+    const NUANCE_DICTIONARY = {
+      "form": {
+        "생성하다": "'생성하다'는 무에서 유를 만드는 create/generate에 가깝습니다. 'form'은 요소들이 모여 틀이나 구조를 이루어 '형성시키다' 또는 문서 양식(서식)을 뜻합니다.",
+        "유형": "'유형'은 종류나 카테고리(type/category)이며, 'form'은 외형적 형태(shape)나 문서 서식을 의미합니다."
+      },
+      "offer": {
+        "제공하다": "'제공하다'는 provide/supply에 가까우며, 'offer'는 상대가 거절할 수도 있는 조건이나 할인을 '제안하다/내놓다'의 뉘앙스입니다."
+      },
+      "provide": {
+        "제안하다": "'제안하다'는 offer이며, 'provide'는 필요한 물품이나 서비스, 식사 등을 직접 '제공/공급하다'의 의미입니다."
+      },
+      "likely": {
+        "가능한": "'가능한'은 possible에 가깝고, 'likely'는 구체적으로 '~할 가능성이 매우 높은 / ...할 것 같은'의 형용사입니다."
+      }
+    };
+
+    // ================= [3. 헬퍼 함수] =================
+    function hasDisassembledHangul(str) {
+      return /[ㄱ-ㅎㅏ-ㅣ]/.test(str);
+    }
+
+    function cleanSymbols(str) {
+      if (!str) return '';
+      return str
+        .replace(/\b(a|n|v|adv|prep)\./gi, '')
+        .replace(/[\.\.\.~?\-_!@#$%^&*()（）\s,]/g, '')
+        .toLowerCase();
+    }
+
+    function parseKoreanMeaning(koreanRaw) {
+      const posRegex = /\b(a|n|v|adv|prep)\./gi;
+      const posMatches = koreanRaw.match(posRegex) || [];
+      const uniquePOS = [...new Set(posMatches.map(p => p.toLowerCase()))];
+      const cleaned = koreanRaw.replace(posRegex, '').trim();
+      const rawMeanings = cleaned.split(/[,/]/).map(s => s.trim()).filter(Boolean);
+
+      return {
+        posList: uniquePOS,
+        cleanedText: cleaned,
+        rawMeanings: rawMeanings
+      };
+    }
+
+    function validateKoreanAnswer(userAns, rawCorrectKorean) {
+      const userNormalized = cleanSymbols(userAns);
+      if (!userNormalized) return false;
+
+      const parsed = parseKoreanMeaning(rawCorrectKorean);
+
+      const fullNormalized = cleanSymbols(parsed.cleanedText);
+      if (userNormalized === fullNormalized) return true;
+
+      for (const m of parsed.rawMeanings) {
+        const mNormalized = cleanSymbols(m);
+        if (mNormalized === userNormalized) return true;
+        if (mNormalized.length >= 2 && userNormalized.length >= 2) {
+          if (mNormalized.includes(userNormalized) || userNormalized.includes(mNormalized)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function generateOdabReason(res) {
+      const type = res.assignedType;
+      const user = res.userAnswer ? res.userAnswer.trim() : '';
+      const correct = res.correctAnswer;
+      const item = res.wordItem;
+      const sentObj = item._selectedSentence;
+
+      if (!user || user.length <= 1) {
+        return `단일 자판 입력(<strong>'${user}'</strong>) 또는 오타입니다. 올바른 정답은 <strong>'${correct}'</strong>입니다.`;
+      }
+
+      const wordNuance = NUANCE_DICTIONARY[item.english.toLowerCase()];
+      if (wordNuance) {
+        for (const [key, explanation] of Object.entries(wordNuance)) {
+          if (user.includes(key)) {
+            return `💡 <strong>뉘앙스 핵심 차이:</strong> ${explanation}`;
+          }
+        }
+      }
+
+      if (hasDisassembledHangul(user)) {
+        return `한글 키보드 오타(<strong>'${user}'</strong>)로 자음/모음이 분리되었습니다. 올바른 한글 뜻은 <strong>'${item.korean}'</strong>입니다.`;
+      }
+
+      if (type === 'sentence_blank') {
+        const completedSentence = sentObj ? sentObj.text.replace('{blank}', `<strong>${correct}</strong>`) : correct;
+        return `이 문장의 원문은 <strong>"${completedSentence}"</strong>입니다.<br>
+                <span class="text-xs text-slate-600 block mt-1">💡 <strong>해석:</strong> ${sentObj ? sentObj.translation : ''}</span>
+                <span class="text-xs text-brand-700 font-semibold block mt-0.5">📌 <strong>구문 팁:</strong> ${sentObj ? sentObj.note : ''}</span>`;
+      }
+
+      if (type === 'kor_to_eng') {
+        return `한글 뜻 <strong>'${item.korean}'</strong>에 해당하는 올바른 영단어는 <strong>'${correct}'</strong>입니다. (입력한 답: '${user}')`;
+      }
+
+      if (type === 'eng_to_kor') {
+        return `영단어 <strong>'${item.english}'</strong>의 대표 뜻은 <strong>'${item.korean}'</strong>입니다. 입력하신 <strong>'${user}'</strong>은(는) 이 단어의 올바른 뜻 범주에 속하지 않습니다.`;
+      }
+
+      return `올바른 정답은 <strong>'${correct}'</strong>입니다.`;
+    }
+
+    // ================= [4. 앱 상태 관리 및 세션] =================
+    const STORAGE_KEY = 'voca_app_wrong_words_v1';
+    let selectedDays = new Set([1]);
+    let currentQuizPool = [];
+    let currentQuestionIdx = 0;
+    let quizResults = [];
+    let quizStartTime = null;
+    let currentConfig = {};
+
+    function shuffleArray(arr) {
+      const array = [...arr];
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function showScreen(screenName) {
+      document.getElementById('setup-screen').classList.add('hidden');
+      document.getElementById('quiz-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+
+      if (screenName === 'setup') {
+        document.getElementById('setup-screen').classList.remove('hidden');
+        checkSavedWrongWords();
+      } else if (screenName === 'quiz') {
+        document.getElementById('quiz-screen').classList.remove('hidden');
+      } else if (screenName === 'result') {
+        document.getElementById('result-screen').classList.remove('hidden');
+      }
+    }
+
+    // ================= [5. 이벤트 바인딩 & 초기화] =================
+    document.addEventListener('DOMContentLoaded', () => {
+      renderDayGrid();
+      setupCheckboxCards('test-type-card');
+      setupCheckboxCards('answer-mode-card'); // 체크박스로 변경 적용
+      checkSavedWrongWords();
+
+      document.getElementById('btn-select-all').addEventListener('click', () => {
+        for (let i = 1; i <= 17; i++) selectedDays.add(i);
+        renderDayGrid();
+      });
+
+      document.getElementById('btn-deselect-all').addEventListener('click', () => {
+        selectedDays.clear();
+        renderDayGrid();
+      });
+
+      document.getElementById('btn-start-test').addEventListener('click', () => {
+        if (selectedDays.size === 0) {
+          alert('최소 1개 이상의 Day를 선택해 주세요!');
+          return;
+        }
+
+        const checkedTypeEls = document.querySelectorAll('input[name="testType"]:checked');
+        const selectedTypes = Array.from(checkedTypeEls).map(el => el.value);
+
+        if (selectedTypes.length === 0) {
+          alert('최소 1개 이상의 시험 유형을 선택해 주세요!');
+          return;
+        }
+
+        const checkedAnswerModeEls = document.querySelectorAll('input[name="answerMode"]:checked');
+        const selectedAnswerModes = Array.from(checkedAnswerModeEls).map(el => el.value);
+
+        if (selectedAnswerModes.length === 0) {
+          alert('최소 1개 이상의 답안 입력 방식을 선택해 주세요!');
+          return;
+        }
+
+        startQuizSession({
+          days: Array.from(selectedDays),
+          testTypes: selectedTypes,
+          answerModes: selectedAnswerModes,
+          isRetest: false
+        });
+      });
+
+      document.getElementById('btn-start-saved-wrong').addEventListener('click', () => {
+        const savedWrong = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        if (savedWrong.length === 0) return;
+
+        startQuizSession({
+          customWords: savedWrong,
+          testTypes: ['eng_to_kor', 'sentence_blank', 'kor_to_eng'],
+          answerModes: ['short_answer', 'multiple_choice'],
+          isRetest: true
+        });
+      });
+
+      document.getElementById('btn-retest-wrong').addEventListener('click', () => {
+        const wrongWords = quizResults.filter(r => r && !r.isCorrect).map(r => r.wordItem);
+        if (wrongWords.length === 0) return;
+
+        startQuizSession({
+          customWords: wrongWords,
+          testTypes: currentConfig.testTypes,
+          answerModes: currentConfig.answerModes,
+          isRetest: true
+        });
+      });
+
+      document.getElementById('btn-next-question').addEventListener('click', handleNextQuestion);
+      document.getElementById('btn-prev-question').addEventListener('click', handlePrevQuestion);
+
+      document.getElementById('btn-quit-quiz').addEventListener('click', () => {
+        if (confirm('시험을 중단하고 메인 설정 화면으로 돌아가시겠습니까?')) {
+          showScreen('setup');
+        }
+      });
+    });
+
+    function renderDayGrid() {
+      const grid = document.getElementById('day-grid');
+      grid.innerHTML = '';
+
+      for (let i = 1; i <= 17; i++) {
+        const isSelected = selectedDays.has(i);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `py-2.5 px-3 rounded-xl font-bold text-sm transition-all border ${
+          isSelected
+            ? 'bg-brand-400 border-brand-500 text-slate-900 shadow-sm'
+            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+        }`;
+        btn.innerText = `Day ${i}`;
+        btn.addEventListener('click', () => {
+          if (selectedDays.has(i)) selectedDays.delete(i);
+          else selectedDays.add(i);
+          renderDayGrid();
+        });
+        grid.appendChild(btn);
+      }
+
+      document.getElementById('selected-count').innerText = `${selectedDays.size}개 선택됨`;
+    }
+
+    function setupCheckboxCards(cardClassName) {
+      const cards = document.querySelectorAll(`.${cardClassName}`);
+      cards.forEach(card => {
+        const input = card.querySelector('input[type="checkbox"]');
+        const updateState = () => {
+          const indicator = card.querySelector('.checkbox-indicator');
+          const icon = card.querySelector('.check-icon');
+
+          if (input.checked) {
+            card.classList.add('border-brand-400', 'bg-brand-50/30', 'shadow-sm');
+            card.classList.remove('border-slate-200');
+            if (indicator) {
+              indicator.classList.add('border-slate-900', 'bg-brand-400');
+              indicator.classList.remove('border-slate-300');
+            }
+            if (icon) icon.classList.remove('hidden');
+          } else {
+            card.classList.remove('border-brand-400', 'bg-brand-50/30', 'shadow-sm');
+            card.classList.add('border-slate-200');
+            if (indicator) {
+              indicator.classList.remove('border-slate-900', 'bg-brand-400');
+              indicator.classList.add('border-slate-300');
+            }
+            if (icon) icon.classList.add('hidden');
+          }
+        };
+        input.addEventListener('change', updateState);
+        updateState();
+      });
+    }
+
+    function checkSavedWrongWords() {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const banner = document.getElementById('saved-wrong-banner');
+      if (saved.length > 0) {
+        banner.classList.remove('hidden');
+        document.getElementById('saved-wrong-count-text').innerText = `총 ${saved.length}개의 오답 단어가 저장되어 있습니다.`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    // ================= [6. 퀴즈 세션 생성] =================
+    function startQuizSession(config) {
+      currentConfig = config;
+
+      let sourceWords = [];
+      if (config.customWords) {
+        sourceWords = [...config.customWords];
+      } else {
+        sourceWords = VOCA_DATABASE.filter(item => config.days.includes(item.day));
+      }
+
+      if (sourceWords.length === 0) {
+        alert('선택된 범위에 시험을 진행할 단어가 없습니다.');
+        return;
+      }
+
+      // 문제별 무작위 시험 유형 및 무작위 답안 입력 방식 할당
+      currentQuizPool = shuffleArray(sourceWords).map(item => {
+        const randomType = config.testTypes[Math.floor(Math.random() * config.testTypes.length)];
+        const randomAnswerMode = config.answerModes[Math.floor(Math.random() * config.answerModes.length)];
+        let chosenSentence = null;
+        if (item.sentences && item.sentences.length > 0) {
+          chosenSentence = item.sentences[Math.floor(Math.random() * item.sentences.length)];
+        }
+        return {
+          ...item,
+          _assignedType: randomType,
+          _assignedAnswerMode: randomAnswerMode,
+          _selectedSentence: chosenSentence
+        };
+      });
+
+      currentQuestionIdx = 0;
+      quizResults = new Array(currentQuizPool.length).fill(null);
+      quizStartTime = new Date();
+
+      document.getElementById('quiz-mode-title').innerText = config.isRetest ? '오답 무작위 재시험 모드' : '시험 진행 중';
+
+      showScreen('quiz');
+      renderCurrentQuestion();
+    }
+
+    let selectedUserAnswer = null;
+
+    function renderCurrentQuestion() {
+      const item = currentQuizPool[currentQuestionIdx];
+      const total = currentQuizPool.length;
+
+      const existingRes = quizResults[currentQuestionIdx];
+      selectedUserAnswer = existingRes ? existingRes.userAnswer : null;
+
+      document.getElementById('quiz-progress-text').innerText = `${currentQuestionIdx + 1} / ${total}`;
+      const percentage = Math.round((currentQuestionIdx / total) * 100);
+      document.getElementById('quiz-progress-bar').style.width = `${percentage}%`;
+
+      document.getElementById('question-sub-hint').innerText = `Day ${item.day}`;
+
+      const posInfo = parseKoreanMeaning(item.korean);
+      const posBadgeEl = document.getElementById('question-pos-badge');
+      if (posInfo.posList.length > 0) {
+        posBadgeEl.innerText = `[품사: ${posInfo.posList.join(', ')}]`;
+        posBadgeEl.classList.remove('hidden');
+      } else {
+        posBadgeEl.classList.add('hidden');
+      }
+
+      const assignedType = item._assignedType;
+      const assignedAnswerMode = item._assignedAnswerMode;
+
+      // 답안 방식 뱃지 표기
+      const modeBadgeEl = document.getElementById('question-mode-badge');
+      if (assignedAnswerMode === 'multiple_choice') {
+        modeBadgeEl.innerText = '객관식';
+        modeBadgeEl.className = 'text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900';
+      } else {
+        modeBadgeEl.innerText = '주관식';
+        modeBadgeEl.className = 'text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600';
+      }
+
+      let promptText = "";
+      if (assignedType === 'kor_to_eng') {
+        document.getElementById('question-type-badge').innerText = '[한글 → 영어]';
+        promptText = posInfo.cleanedText;
+      } else if (assignedType === 'eng_to_kor') {
+        document.getElementById('question-type-badge').innerText = '[영어 → 한글]';
+        promptText = item.english;
+      } else if (assignedType === 'sentence_blank') {
+        document.getElementById('question-type-badge').innerText = '[문장 빈칸]';
+        const sentObj = item._selectedSentence;
+        promptText = sentObj ? sentObj.text.replace('{blank}', '________') : '________';
+      }
+
+      document.getElementById('question-prompt').innerText = promptText;
+
+      const btnPrev = document.getElementById('btn-prev-question');
+      if (currentQuestionIdx === 0) {
+        btnPrev.disabled = true;
+        btnPrev.classList.add('opacity-40', 'cursor-not-allowed');
+      } else {
+        btnPrev.disabled = false;
+        btnPrev.classList.remove('opacity-40', 'cursor-not-allowed');
+      }
+
+      const btnNext = document.getElementById('btn-next-question');
+      btnNext.disabled = !selectedUserAnswer;
+
+      const answerContainer = document.getElementById('answer-container');
+      answerContainer.innerHTML = '';
+
+      // [객관식] 또는 [주관식] 문제별 독립 렌더링
+      if (assignedAnswerMode === 'multiple_choice') {
+        const choicesSet = new Set();
+        const correctChoice = assignedType === 'eng_to_kor' ? posInfo.cleanedText : item.english;
+        choicesSet.add(correctChoice);
+
+        const otherCandidates = shuffleArray(VOCA_DATABASE.filter(w => w.id !== item.id));
+
+        for (const cand of otherCandidates) {
+          const candOption = assignedType === 'eng_to_kor' ? parseKoreanMeaning(cand.korean).cleanedText : cand.english;
+          choicesSet.add(candOption);
+          if (choicesSet.size === 4) break;
+        }
+
+        const choices = shuffleArray(Array.from(choicesSet));
+
+        choices.forEach((choice, i) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const isSelected = selectedUserAnswer === choice;
+          btn.className = `w-full p-4 rounded-2xl border-2 hover:border-brand-400 hover:bg-brand-50/40 text-left font-bold text-slate-700 transition flex items-center gap-3 choice-btn ${
+            isSelected ? 'border-brand-500 bg-brand-100/50 shadow-sm' : 'border-slate-200'
+          }`;
+          btn.innerHTML = `
+            <span class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 indicator">${i + 1}</span>
+            <span class="flex-1">${choice}</span>
+          `;
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.choice-btn').forEach(b => {
+              b.classList.remove('border-brand-500', 'bg-brand-100/50', 'shadow-sm');
+              b.classList.add('border-slate-200');
+            });
+            btn.classList.remove('border-slate-200');
+            btn.classList.add('border-brand-500', 'bg-brand-100/50', 'shadow-sm');
+            selectedUserAnswer = choice;
+            btnNext.disabled = false;
+          });
+          answerContainer.appendChild(btn);
+        });
+
+      } else {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'space-y-2';
+        wrapper.innerHTML = `
+          <input type="text" id="short-input" autocomplete="off" value="${selectedUserAnswer || ''}" placeholder="정답을 입력하세요..." 
+            class="w-full p-4 rounded-2xl border-2 border-slate-200 focus:border-brand-400 focus:outline-none font-bold text-slate-800 text-lg transition" />
+          <p class="text-xs text-slate-400 text-right">Enter 키를 누르면 바로 다음 문제로 이동합니다.</p>
+        `;
+        answerContainer.appendChild(wrapper);
+
+        const inputEl = document.getElementById('short-input');
+        inputEl.focus();
+        inputEl.addEventListener('input', (e) => {
+          selectedUserAnswer = e.target.value.trim();
+          btnNext.disabled = selectedUserAnswer.length === 0;
+        });
+        inputEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && selectedUserAnswer) {
+            e.preventDefault();
+            handleNextQuestion();
+          }
+        });
+      }
+    }
+
+    function recordCurrentAnswer() {
+      if (!selectedUserAnswer) return;
+
+      const item = currentQuizPool[currentQuestionIdx];
+      const assignedType = item._assignedType;
+      let isCorrect = false;
+      let displayCorrectAnswer = "";
+
+      if (assignedType === 'eng_to_kor') {
+        isCorrect = validateKoreanAnswer(selectedUserAnswer, item.korean);
+        displayCorrectAnswer = item.korean;
+      } else {
+        isCorrect = selectedUserAnswer.trim().toLowerCase() === item.english.trim().toLowerCase();
+        displayCorrectAnswer = item.english;
+      }
+
+      quizResults[currentQuestionIdx] = {
+        wordItem: item,
+        prompt: document.getElementById('question-prompt').innerText,
+        userAnswer: selectedUserAnswer,
+        correctAnswer: displayCorrectAnswer,
+        isCorrect: isCorrect,
+        assignedType: assignedType
+      };
+    }
+
+    function handlePrevQuestion() {
+      if (currentQuestionIdx > 0) {
+        if (selectedUserAnswer) recordCurrentAnswer();
+        currentQuestionIdx--;
+        renderCurrentQuestion();
+      }
+    }
+
+    function handleNextQuestion() {
+      if (!selectedUserAnswer) return;
+
+      recordCurrentAnswer();
+      currentQuestionIdx++;
+
+      if (currentQuestionIdx < currentQuizPool.length) {
+        const card = document.getElementById('question-card');
+        card.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => {
+          renderCurrentQuestion();
+          card.classList.remove('opacity-0', 'scale-95');
+        }, 120);
+      } else {
+        finishQuizSession();
+      }
+    }
+
+    // ================= [7. 결과 화면 및 리포트] =================
+    function finishQuizSession() {
+      const endTime = new Date();
+      const elapsedSeconds = Math.floor((endTime - quizStartTime) / 1000);
+      const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+      const secs = String(elapsedSeconds % 60).padStart(2, '0');
+
+      const validResults = quizResults.filter(Boolean);
+      const total = validResults.length;
+      const correctCount = validResults.filter(r => r.isCorrect).length;
+      const wrongResults = validResults.filter(r => !r.isCorrect);
+      const wrongCount = wrongResults.length;
+      const score = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+      document.getElementById('result-score').innerText = `${score}점`;
+      document.getElementById('result-counts').innerHTML = `<span class="text-emerald-600">${correctCount}</span> / <span class="text-rose-500">${wrongCount}</span>`;
+      document.getElementById('result-time').innerText = `${mins}:${secs}`;
+      document.getElementById('wrong-count-badge').innerText = wrongCount;
+
+      const wrongWordsToStore = wrongResults.map(r => r.wordItem);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(wrongWordsToStore));
+
+      const btnRetestWrong = document.getElementById('btn-retest-wrong');
+      if (wrongCount === 0) {
+        btnRetestWrong.disabled = true;
+        btnRetestWrong.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        btnRetestWrong.disabled = false;
+        btnRetestWrong.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+
+      const reviewList = document.getElementById('review-list');
+      reviewList.innerHTML = '';
+
+      validResults.forEach((res) => {
+        const item = res.wordItem;
+        const sentObj = item._selectedSentence;
+        const card = document.createElement('div');
+
+        card.className = `p-5 rounded-2xl border-2 transition ${
+          res.isCorrect ? 'bg-emerald-50/40 border-emerald-200' : 'bg-rose-50/40 border-rose-200'
+        }`;
+
+        let sentenceDetailHtml = '';
+        if (sentObj) {
+          const completedSentence = sentObj.text.replace('{blank}', `<strong class="text-emerald-700 underline font-black">${item.english}</strong>`);
+          sentenceDetailHtml = `
+            <div class="mt-3 pt-3 border-t border-slate-200/80 space-y-1 text-xs">
+              <p class="text-slate-800 font-medium">📝 <strong>원문 예문:</strong> ${completedSentence}</p>
+              <p class="text-slate-600">💡 <strong>예문 해석:</strong> ${sentObj.translation}</p>
+              ${sentObj.note ? `<p class="text-brand-700 font-semibold">📌 <strong>구문 팁:</strong> ${sentObj.note}</p>` : ''}
+            </div>
+          `;
+        }
+
+        const odabFeedbackHtml = !res.isCorrect ? `
+          <div class="mt-3 pt-3 border-t border-rose-200/60 text-xs text-rose-800 bg-rose-100/50 p-3 rounded-xl flex items-start gap-2.5">
+            <i class="fa-solid fa-lightbulb text-brand-600 text-base mt-0.5"></i>
+            <div class="flex-1 leading-relaxed">
+              <span class="font-bold block mb-1 text-slate-800">뉘앙스 & 오답 원인 분석</span>
+              ${generateOdabReason(res)}
+            </div>
+          </div>
+        ` : '';
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold px-2 py-0.5 rounded ${res.isCorrect ? 'bg-emerald-200 text-emerald-800' : 'bg-rose-200 text-rose-800'}">
+                  ${res.isCorrect ? '정답' : '오답'}
+                </span>
+                <span class="text-xs font-semibold text-slate-400">Day ${item.day}</span>
+              </div>
+              <p class="font-extrabold text-slate-800 text-base sm:text-lg mt-1">${res.prompt}</p>
+            </div>
+            <div class="text-right text-xs sm:text-sm">
+              <p class="text-slate-500">내가 쓴 답: <span class="font-bold ${res.isCorrect ? 'text-emerald-700' : 'text-rose-600 line-through'}">${res.userAnswer}</span></p>
+              ${!res.isCorrect ? `<p class="text-emerald-700 font-bold mt-0.5">실제 정답: ${res.correctAnswer}</p>` : ''}
+            </div>
+          </div>
+          ${sentenceDetailHtml}
+          ${odabFeedbackHtml}
+        `;
+        reviewList.appendChild(card);
+      });
+
+      showScreen('result');
+    }
+  </script>
+</body>
+</html>
